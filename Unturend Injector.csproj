@@ -1,0 +1,50 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <RootNamespace>Unturend_Injector</RootNamespace>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <TargetFramework>net8.0-windows</TargetFramework> <!-- Добавляем спецификацию платформы -->
+        
+        <!-- Настройки публикации -->
+        <PublishSingleFile>true</PublishSingleFile>
+        <SelfContained>true</SelfContained>
+        <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+        <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+        <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+        
+        <!-- Отключаем AOT и Trim для совместимости -->
+        <PublishAot>false</PublishAot> <!-- Отключаем AOT -->
+        <PublishTrimmed>false</PublishTrimmed> <!-- Отключаем Trim -->
+        
+        <ApplicationIcon>DHACK LOADER ICO .ico</ApplicationIcon>
+        <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+        <EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
+        <AnalysisLevel>6.0-all</AnalysisLevel>
+        
+        <!-- Подавляем предупреждения Windows-специфичных API -->
+        <SupportedOSPlatform>windows</SupportedOSPlatform>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Content Include="DHACK LOADER ICO .ico" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+        <PackageReference Include="System.Drawing.Common" Version="9.0.3" />
+        <PackageReference Include="System.Management" Version="9.0.3" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Reference Include="SharpMonoInjector">
+            <HintPath>Lib\SharpMonoInjector.dll</HintPath>
+        </Reference>
+    </ItemGroup>
+
+    <!-- Дополнительные настройки для нативных библиотек -->
+    <ItemGroup>
+        <Content Update="Lib\*.dll" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+
+</Project>
