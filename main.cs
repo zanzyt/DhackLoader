@@ -16,7 +16,7 @@ namespace Unturend_Injector
 {
     internal class Program
     {
-        private const string ObfuscatedWebhook = "aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTM1NzAzMDQxNzQ2NjkyMTA0MC9hRllxSDZnek9WRUl0YkFBTDNUSm0wTXRHZTgzZEFPSERrU1FzR21NMk5XR2pyeUV2YWpnVjVnMy15bmkzTVE3V0NIQw==";
+        private const string ObfuscatedWebhook = "";
 
         private const string AlertVideoUrl = "https://www.dropbox.com/scl/fi/e4nvtwn96bd25kx8p4qcw/CRACKALNIKNA0.mp4?rlkey=mlf4dh9xtogxodb7kxnhnrkk2&st=9r7or8su&dl=1";
 
