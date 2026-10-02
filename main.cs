@@ -214,7 +214,7 @@ namespace Unturend_Injector
                 Console.ResetColor();
             }
 
-            // Общий метод для звукового оповещения (раскомментировать при необходимости)
+           
             Console.Beep(3000, 1000);
 
 
